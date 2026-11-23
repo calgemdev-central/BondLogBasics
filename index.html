@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cement Bond Logging – Acoustic Measurement Animator</title>
+<style>
+  :root{--bg:#0d141b;--panel:#15202b;--line:#2a3b4c;--txt:#dce6ee;--mut:#8ea3b5;--acc:#ffb347;}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:"Segoe UI",Roboto,Arial,sans-serif;overflow:hidden}
+  #wrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  #stage{width:1600px;height:906px;transform-origin:center center;position:relative;flex:none}
+  #bar{background:#101a23;border-bottom:1px solid var(--line);font-size:12px}
+  .brow{display:flex;align-items:center;gap:6px;padding:0 8px;box-sizing:border-box}
+  #row1{height:40px}
+  #row2{height:26px;border-top:1px solid #1d2a36;background:#0f1820}
+  #bar h1{font-size:12px;margin:0 4px 0 0;white-space:nowrap;color:#fff;font-weight:600;line-height:1.15}
+  #bar h1 span{color:var(--acc)}
+  .grp{display:flex;flex-direction:column;gap:1px}
+  .grp label,.lbl{font-size:9.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em}
+  select,button,input[type=number]{background:#1c2a37;color:var(--txt);border:1px solid #35495c;border-radius:4px;font-size:11.5px;padding:2px 6px}
+  button{cursor:pointer;font-weight:600;white-space:nowrap}
+  button:hover{background:#26394a}
+  button.pri{background:#2b5c84;border-color:#3d7bb0}
+  button.pri:hover{background:#346d9b}
+  button.on{background:#7a4b12;border-color:#ffb347;color:#fff}
+  input[type=range]{width:80px;accent-color:#ffb347;margin:0}
+  .val{font-size:10.5px;color:var(--acc);text-transform:none}
+  .sep{width:1px;height:28px;background:var(--line)}
+  #row2 .ttl{font-size:11px;font-weight:600;color:#fff;white-space:nowrap}
+  #row2 .fld{display:flex;align-items:center;gap:3px;white-space:nowrap}
+  #row2 input{width:58px;padding:1px 4px;font-size:11px}
+  #row2 button{padding:1px 8px;font-size:11px}
+  #pInfo{font-size:10.5px;color:#b9c7d3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+  #pInfo b{color:#ffd9a8;font-weight:600}
+  #pErr{font-size:10.5px;color:#ff8080;white-space:nowrap}
+  .ov{position:absolute;box-sizing:border-box}
+  #slow{left:248px;top:595px;width:386px;height:74px;display:flex;flex-direction:column;gap:2px;font-size:11px}
+  #slow .row{display:flex;align-items:center;gap:5px}
+  #slow button{padding:3px 6px;font-size:11px}
+  #slow input[type=range]{width:130px}
+  #slow label.ck{display:flex;align-items:center;gap:3px;color:#c9d5df;cursor:pointer}
+  canvas{display:block}
+  /* overlay boxes inside the canvas area */
+  .ov{position:absolute;box-sizing:border-box}
+  #prog{left:10px;top:560px;width:220px;height:330px;background:#15202b;border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:11px}
+  #prog h3{margin:0 0 6px;font-size:13px;color:#fff;font-weight:600}
+  #prog .g{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px}
+  #prog .f{display:flex;flex-direction:column;gap:1px}
+  #prog input{width:100%;box-sizing:border-box;padding:3px 5px}
+  #prog .info{margin-top:4px;color:#b9c7d3;line-height:1.4;font-size:10px}
+  #prog .info b{color:#ffd9a8;font-weight:600}
+  #prog .err{color:#ff8080;font-size:10.5px;min-height:13px;margin-top:3px}
+  #prog button{margin-top:6px;width:100%}
+  #slow{left:248px;top:584px;width:386px;height:80px;display:flex;flex-direction:column;gap:3px;font-size:11px}
+  #slow .row{display:flex;align-items:center;gap:5px}
+  #slow button{padding:3px 6px;font-size:11px}
+  #slow input[type=range]{width:130px}
+  #slow label.ck{display:flex;align-items:center;gap:3px;color:#c9d5df;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage">
+  <div id="bar">
+   <div class="brow" id="row1">
+    <h1>Cement Bond Logging<br><span>Acoustic Measurement Animator</span></h1>
+    <div class="grp"><label>Logging tool</label>
+      <select id="selTool">
+        <option value="cbl" selected>Conventional CBL/VDL (sonic)</option>
+        <option value="usit" disabled>USIT – ultrasonic imager (coming next)</option>
+        <option value="castv" disabled>CAST-V – ultrasonic scanner (coming next)</option>
+      </select></div>
+    <div class="grp"><label>Casing</label><select id="selCsg"></select></div>
+    <div class="grp"><label>Tool OD</label><select id="selOd"></select></div>
+    <div class="grp"><label>VDL shading</label>
+      <select id="selVdl">
+        <option value="full">Full wave (+ black / − white)</option>
+        <option value="msg">MSG (positive peaks only)</option>
+      </select></div>
+    <div class="sep"></div>
+    <button class="pri" id="bAuto">▶ Auto run</button>
+    <button id="bRih">⬇ RIH</button>
+    <button id="bLog">⬆ Log up</button>
+    <button id="bPause">⏸ Pause</button>
+    <button id="bReset">↺ Reset</button>
+    <div class="sep"></div>
+    <div class="grp"><label>Tool speed (animation) <span class="val" id="vSpd"></span></label><input type="range" id="rSpd" min="1" max="60" value="6"></div>
+    <div class="grp"><label>Scrub firing time <span class="val" id="vT"></span></label><input type="range" id="rT" min="0" max="1200" value="0" style="width:150px"></div>
+   </div>
+   <div class="brow" id="row2">
+    <span class="ttl">Logging program</span>
+    <span class="fld"><span class="lbl">Log top</span><input type="number" id="iTop" step="10"></span>
+    <span class="fld"><span class="lbl">Log btm</span><input type="number" id="iBot" step="5"></span>
+    <span class="fld"><span class="lbl">TOC</span><input type="number" id="iToc" step="10"></span>
+    <span class="fld"><span class="lbl">Float collar</span><input type="number" id="iFc" step="5"></span>
+    <span class="fld"><span class="lbl">TD</span><input type="number" id="iTd" step="10"></span>
+    <span class="fld"><span class="lbl">Real speed ft/min</span><input type="number" id="iSpd" step="5"></span>
+    <button id="bApply">Apply &amp; reset</button>
+    <span id="pErr"></span>
+    <span id="pInfo"></span>
+    <span style="font-size:11px;font-weight:600;color:#ffd9a8;white-space:nowrap;padding-left:8px;border-left:1px solid #2a3b4c">S. Siddhu | SOGE | Central</span>
+   </div>
+  </div>
+  <canvas id="cv"></canvas>
+
+  <!-- slow-motion controls -->
+  <div class="ov" id="slow">
+    <div class="row"><span class="lbl">Playback</span>
+      <input type="range" id="rRate" min="0" max="100" value="70">
+      <span class="val" id="vRate"></span></div>
+    <div class="row">
+      <button id="pPath" title="Watch the pulse cross each layer">Ray path</button>
+      <button id="pSlow">Slow</button>
+      <button id="pLive">Live</button>
+      <span style="width:8px"></span>
+      <button id="sPrev">◀ Step</button>
+      <button id="sPlay">⏸ Wave</button>
+      <button id="sNext">Step ▶</button></div>
+    <div class="row">
+      <label class="ck"><input type="checkbox" id="cGuide"> Stop at each stage</label>
+      <label class="ck"><input type="checkbox" id="cHold" checked> Hold depth in slow-mo</label></div>
+  </div>
+</div></div>
+
+<script>
+"use strict";
+{
+/* =====================================================================
+   PHYSICS CONSTANTS  (FEU "Principle of Measurement" deck)
+   ===================================================================== */
+const DT_FL = 189, DT_ST = 57, DT_CM = 75;       // µs/ft
+const DELAY = 48;        // instrument/transducer delay, µs (chosen so model TT matches deck free-pipe TT table)
+const F0 = 20000;        // transducer centre frequency, Hz
+const TOOLS = [ {name:'1-11/16"', od:1.6875}, {name:'2"', od:2.0}, {name:'2-3/4"', od:2.75}, {name:'3-3/8"', od:3.375}, {name:'3-5/8"', od:3.625} ];
+const MIN_CLEAR = 0.75;  // minimum diametral clearance tool-to-casing ID, in (illustrative fit check)
+let TOOL_OD = 1.6875;    // default 1-11/16" tool
+const KHW = Math.sqrt(DT_FL*DT_FL - DT_ST*DT_ST);
+const THC = Math.asin(DT_ST/DT_FL);              // critical angle, rad
+const THETA_C = THC*180/Math.PI;
+const ALPHA0 = 1.0, ALPHA_MAX = 10;              // dB/ft – illustrative
+const THR = 1.0, GATE_W = 36, W_MAX = 1200, VDL_T0 = 200, VDL_T1 = 1200;
+const ftps = dt => Math.round(1e6/dt).toLocaleString('en-US');
+
+const CASINGS = [
+  {name:'4-1/2" 11.6#', od:4.5,   id:4.000, fp:81, tt:254, bit:6.25},
+  {name:'5" 18#',       od:5.0,   id:4.276, fp:76, tt:258, bit:6.75},
+  {name:'5-1/2" 17#',   od:5.5,   id:4.892, fp:72, tt:269, bit:7.875},
+  {name:'7" 23#',       od:7.0,   id:6.366, fp:62, tt:289, bit:8.75},
+  {name:'9-5/8" 53.5#', od:9.625, id:8.535, fp:51, tt:332, bit:12.25},
+];
+
+/* =====================================================================
+   WELL MODEL (driven by the logging-program box)
+   ===================================================================== */
+const CFG = {logTop:2550, logBot:2955, toc:2700, fc:2960, td:3000, realSpd:30, surfShoe:500};
+const ROW = 0.5;
+let NROWS, TX_BOTTOM, COLLARS, LAYERS, ZONES, LIME, TAGS;
+const LITH = {
+  shale:{dt:115, gr:105, col:'#6d5a45', name:'Shale'},
+  sand: {dt:88,  gr:35,  col:'#c8a75a', name:'Sandstone'},
+  lime: {dt:47.6,gr:18,  col:'#9fb3c2', name:'Limestone (fast)'}};
+function rng(seed){ return ()=>{ seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function rebuildModel(){
+  NROWS = Math.round((CFG.logBot-CFG.logTop)/ROW)+1;
+  TX_BOTTOM = CFG.logBot + 2.5;
+  COLLARS = []; for(let c=CFG.fc; c>20; c-=40) COLLARS.push(c);
+  // lithology: alternating sand/shale, pseudo-random thickness
+  LAYERS = []; const r=rng(7); let d=0, t='shale';
+  while(d < CFG.td+100){ const h = 15 + r()*40; LAYERS.push([d,d+h,t]); d+=h; t = t==='shale'?'sand':'shale'; }
+  // cement zones relative to TOC / float collar
+  const c0 = CFG.toc+18, L = Math.max(0, CFG.fc - c0);
+  ZONES = [{a:-1e9,b:CFG.toc,k:'free'},{a:CFG.toc,b:c0,k:'toc'}];
+  TAGS = [];
+  if(L > 40){
+    const seg=[[0,.15,'good'],[.15,.25,'micro'],[.25,.45,'good'],[.45,.55,'channel'],[.55,1,'good']];
+    for(const s of seg) ZONES.push({a:c0+s[0]*L, b:c0+s[1]*L, k:s[2]});
+    ZONES.push({a:CFG.fc,b:1e9,k:'good'});
+  } else ZONES.push({a:c0,b:1e9,k:'good'});
+  LIME = (L>80) ? [c0+0.62*L, c0+0.62*L+16] : null;
+  const nm={free:'Free pipe · chevrons',toc:'TOC',good:'Good bond',micro:'Microannulus',channel:'Channel'};
+  for(const z of ZONES){ const a=Math.max(z.a,CFG.logTop), b=Math.min(z.b,CFG.logBot); if(b-a>4) TAGS.push([z.k==='toc'?z.a:(a+b)/2, nm[z.k]]); }
+  if(LIME && LIME[0]>CFG.logTop && LIME[1]<CFG.logBot) TAGS.push([(LIME[0]+LIME[1])/2,'Fast fm']);
+}
+function lithAt(d){
+  let t='sand';
+  if(LIME && d>=LIME[0] && d<LIME[1]) t='lime';
+  else { for(const L of LAYERS){ if(d>=L[0]&&d<L[1]){t=L[2];break;} } }
+  const L = LITH[t]; const wig = Math.sin(d/2.3)*0.5 + Math.sin(d/7.1)*0.5;
+  return {type:t, dt: L.dt + (t==='lime'?0:4*wig), gr: L.gr + 8*wig, col:L.col, name:L.name};
+}
+function bondAt(d){
+  const j = 0.03*Math.sin(d*1.7);
+  for(const z of ZONES){ if(d>=z.a && d<z.b){
+    switch(z.k){
+      case 'free': return {bc:0,bf:0,cem:false,zone:'free'};
+      case 'toc': { const f=(d-z.a)/18; return {bc:0.7*f,bf:0.6*f,cem:true,zone:'toc'}; }
+      case 'good': return {bc:0.95+j,bf:0.9+j,cem:true,zone:'good'};
+      case 'micro': return {bc:0.30+j,bf:0.8,cem:true,zone:'micro'};
+      case 'channel': return {bc:0.5+j,bf:0.35,cem:true,zone:'channel'};
+    }}}
+  return {bc:0.95,bf:0.9,cem:true,zone:'good'};
+}
+
+/* =====================================================================
+   GEOMETRY + ACOUSTIC FORWARD MODEL
+   ===================================================================== */
+let G = null;
+function setCasing(i){
+  const c = CASINGS[i];
+  const idR=c.id/2, odR=c.od/2, bitR=c.bit/2, toolR=TOOL_OD/2;
+  G = {...c, idR, odR, bitR, toolR, gapFt:(idR-toolR)/12, wallFt:(odR-idR)/12, cemFt:(bitR-odR)/12};
+  G.legs = G.gapFt*DT_FL + G.wallFt*DT_ST + G.cemFt*DT_CM;     // one-way radial legs (deck method)
+  G.ttModel = DELAY + 3*DT_ST + 2*G.gapFt*KHW;                // head-wave free-pipe TT at 3 ft
+  G.gateOpen = G.ttModel - 10;
+}
+function wavelet(tau,f,Tr){ if(tau<=0) return 0; return Math.sin(2*Math.PI*f*tau*1e-6)*(1-Math.exp(-tau/6))*Math.exp(-tau/Tr); }
+function noise(t,seed){ return 0.12*Math.sin(t*0.93+seed*12.9)*Math.sin(t*0.317+seed*3.1); }
+function compsAt(tx, rx){
+  const top = tx - rx, n = 16;
+  let sbc=0,sbf=0,scem=0,sdt=0;
+  for(let i=0;i<n;i++){ const d = top + (i+0.5)*rx/n; const b = bondAt(d);
+    sbc+=b.bc; sbf+=b.cem?b.bf:0; scem+=b.cem?1:0; sdt+=lithAt(d).dt; }
+  const bc=sbc/n, bf=sbf/n, cem=scem/n, dt=sdt/n, comps=[];
+  let Ac = G.fp*Math.pow(10, -(ALPHA0*(rx-3) + ALPHA_MAX*bc*rx)/20);
+  let tC = DELAY + rx*DT_ST + 2*G.gapFt*KHW;
+  for(const c of COLLARS){ if(c>top && c<tx){ Ac*=0.72; tC+=4; } }
+  comps.push({t:tC, A:Ac, f:F0, Tr:40 + 260*Math.pow(1-bc,2), k:'casing'});
+  const Afree = G.fp*Math.pow(10,-ALPHA0*(rx-3)/20);
+  for(const c of COLLARS){
+    let ex=null;
+    if(c<top && top-c<9) ex = 2*(top-c); else if(c>tx && c-tx<9) ex = 2*(c-tx);
+    if(ex!==null){ const a = 0.75*Afree*(1-bondAt(c).bc)*Math.exp(-ex/12); if(a>0.05) comps.push({t:tC+ex*DT_ST, A:a, f:F0, Tr:120, k:'chev'}); }
+  }
+  const coup = 0.1*(1-cem) + bf;
+  const tP = DELAY + rx*dt + 2*G.legs;
+  comps.push({t:tP, A:9*coup, f:18000, Tr:160, k:'P'});
+  const dtS = 1.75*dt; let tS=null;
+  if(dtS < DT_FL){ tS = DELAY + rx*dtS + 2*G.legs; comps.push({t:tS, A:15*coup, f:14000, Tr:200, k:'S'}); }
+  const tM = DELAY + rx*DT_FL;
+  comps.push({t:tM, A:3.5, f:F0, Tr:70, k:'fluid'});
+  return {comps, bc, bf, cem, dt, tC, tP, tS, tM, Ac, coup, seed:tx};
+}
+function waveAt(C,t){ let s=0; for(const c of C.comps) s += c.A*wavelet(t-c.t,c.f,c.Tr); return s + noise(t,C.seed); }
+function measureCBL(tx){
+  const C = compsAt(tx,3);
+  let amp=0; for(let t=G.gateOpen; t<=G.gateOpen+GATE_W; t+=0.25) amp=Math.max(amp, waveAt(C,t));
+  let tt=NaN; for(let t=G.gateOpen; t<=G.gateOpen+180; t+=0.25){ if(waveAt(C,t)>THR){ tt=t; break; } }
+  return {amp, tt, C};
+}
+const VGAIN = 12;   // mV for display saturation
+function vdlGray(s, mode){
+  const v = s/VGAIN;
+  if(mode==='msg') return Math.round(255*(1-Math.tanh(1.4*Math.max(v,0))));
+  return Math.round(128 - 127*Math.tanh(1.3*v));
+}
+function cclAt(d){ let s=0; for(const c of COLLARS){ const x=d-c; if(Math.abs(x)<3) s += -x*Math.exp(-x*x*2.2)*2.4; } return s; }
+function grAt(d){ return lithAt(d).gr + 3*Math.sin(d*3.3)+2*Math.sin(d*7.7); }
+
+/* =====================================================================
+   STATE
+   ===================================================================== */
+const S = { phase:'surface', tx:60, paused:false, auto:false, logSpeed:6, rate:120, t:0, waveOn:true,
+            nextRow:0, drop:0, vdlMode:'full', guided:false, hold:true, drum:0 };
+let LOGS, vdlCanvas, vdlCtx, rowImg;
+function resetLogs(){
+  LOGS = {amp:new Float32Array(NROWS).fill(NaN), tt:new Float32Array(NROWS).fill(NaN),
+          gr:new Float32Array(NROWS).fill(NaN), ccl:new Float32Array(NROWS).fill(NaN), done:new Uint8Array(NROWS)};
+  vdlCanvas = document.createElement('canvas'); vdlCanvas.width=250; vdlCanvas.height=NROWS;
+  vdlCtx = vdlCanvas.getContext('2d'); vdlCtx.fillStyle='#0d141b'; vdlCtx.fillRect(0,0,250,NROWS);
+  rowImg = vdlCtx.createImageData(250,1);
+  S.nextRow = CFG.logBot;
+}
+function vdlRowPixels(C, out){
+  for(let x=0;x<250;x++){ const t = VDL_T0 + (x+0.5)*(VDL_T1-VDL_T0)/250; const g = vdlGray(waveAt(C,t), S.vdlMode);
+    out[x*4]=out[x*4+1]=out[x*4+2]=g; out[x*4+3]=255; }
+}
+function recordRow(d){
+  const i = Math.round((d-CFG.logTop)/ROW); if(i<0||i>=NROWS) return;
+  const m = measureCBL(d+1.5);
+  LOGS.amp[i]=m.amp; LOGS.tt[i]=m.tt; LOGS.gr[i]=grAt(d); LOGS.ccl[i]=cclAt(d); LOGS.done[i]=1;
+  vdlRowPixels(compsAt(d+2.5,5), rowImg.data); vdlCtx.putImageData(rowImg,0,i);
+}
+function rerenderVDL(){ for(let i=0;i<NROWS;i++) if(LOGS.done[i]){ vdlRowPixels(compsAt(CFG.logTop+i*ROW+2.5,5),rowImg.data); vdlCtx.putImageData(rowImg,0,i); } }
+const firingNow = ()=> S.phase==='atTD'||S.phase==='logging'||S.phase==='done';
+
+/* =====================================================================
+   CANVAS
+   ===================================================================== */
+const W=1600, H=840;
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+const DPR=Math.min(2, window.devicePixelRatio||1);
+cv.width=W*DPR; cv.height=H*DPR; cv.style.width=W+'px'; cv.style.height=H+'px';
+ctx.setTransform(DPR,0,0,DPR,0,0);
+function fit(){ const s=Math.min(innerWidth/1600, innerHeight/906); document.getElementById('stage').style.transform=`scale(${s})`; }
+addEventListener('resize',fit); fit();
+const C_ = {panel:'#15202b', line:'#2a3b4c', txt:'#dce6ee', mut:'#8ea3b5', casing:'#ff9a3c', P:'#4ade80', S:'#c084fc',
+            fluid:'#5ab4ff', steel:'#8d99a6', cement:'#b5aa90', tool:'#4b5866', acc:'#ffb347'};
+function panel(x,y,w,h,title,sub){
+  ctx.fillStyle=C_.panel; ctx.strokeStyle=C_.line; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.roundRect(x,y,w,h,6); ctx.fill(); ctx.stroke();
+  if(title){ ctx.fillStyle='#fff'; ctx.font='600 13px Segoe UI, Arial'; ctx.textAlign='left'; ctx.textBaseline='alphabetic'; ctx.fillText(title,x+10,y+19);
+    if(sub){ const tw=ctx.measureText(title).width; ctx.fillStyle=C_.mut; ctx.font='11px Segoe UI, Arial'; ctx.fillText(sub,x+16+tw,y+19);} }
+}
+function txt(s,x,y,col,font,align,base){ ctx.fillStyle=col||C_.txt; ctx.font=font||'11px Segoe UI, Arial'; ctx.textAlign=align||'left'; ctx.textBaseline=base||'alphabetic'; ctx.fillText(s,x,y); }
+const fmt = (v,n=0)=> (v===null||isNaN(v))?'—':v.toLocaleString('en-US',{minimumFractionDigits:n,maximumFractionDigits:n});
+function wrapText(s,x,y,maxW,lh,col,font){
+  ctx.font=font||'11px Segoe UI'; ctx.fillStyle=col||C_.txt; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  const words=s.split(' '); let line=''; for(const w of words){ const t=line?line+' '+w:w; if(ctx.measureText(t).width>maxW){ ctx.fillText(line,x,y); y+=lh; line=w; } else line=t; }
+  if(line){ ctx.fillText(line,x,y); y+=lh; } return y;
+}
+function arrow(x1,y1,x2,y2,col){ ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const a=Math.atan2(y2-y1,x2-x1); ctx.beginPath(); ctx.moveTo(x2,y2); ctx.lineTo(x2-7*Math.cos(a-0.4),y2-7*Math.sin(a-0.4)); ctx.lineTo(x2-7*Math.cos(a+0.4),y2-7*Math.sin(a+0.4)); ctx.fill(); ctx.lineWidth=1; }
+
+/* =====================================================================
+   SIGNAL SEQUENCE (stages)
+   ===================================================================== */
+function stagesFor(C3,C5){
+  const tFl = G.gapFt/Math.cos(THC)*DT_FL;
+  const st = [
+    {t:0, m:'tool', c:'#ff7b54', h:'Transmitter fires (T0)',
+     b:'The piezo-ceramic transmitter emits a ~20 kHz pressure pulse. In this model the first '+DELAY+' µs is transducer/electronics delay before sound leaves the tool.'},
+    {t:DELAY, m:'fluid', c:'#5ab4ff', h:'Pulse crosses the borehole fluid',
+     b:`Sound travels through the fluid at ${DT_FL} µs/ft (~${ftps(DT_FL)} ft/s). The ray that becomes the casing signal leaves at the critical angle θc ≈ ${THETA_C.toFixed(1)}°. The slotted tool housing stops sound running up the tool body.`},
+    {t:DELAY+tFl, m:'casing', c:'#ff9a3c', h:'Reaches the casing – reflection & refraction',
+     b:`At the fluid/steel face part of the energy reflects back toward the tool (not used by CBL) and part refracts into the steel. At θc the refracted wave runs ALONG the pipe at ${DT_ST} µs/ft (~${ftps(DT_ST)} ft/s): the casing wave.`},
+    {t:DELAY+G.gapFt*DT_FL+G.wallFt*DT_ST, m:'cement', c:'#d8ceb4', h:'Energy crosses the steel into the annulus',
+     b:`Behind bonded pipe the energy passes into cement (${DT_CM} µs/ft) and the pipe vibration is damped. Behind free pipe there is only fluid, so little energy leaves and the pipe keeps ringing like a bell.`},
+    {t:DELAY+G.legs, m:'formation', c:'#4ade80', h:'Into the formation',
+     b:'Energy reaching the rock refracts along the borehole wall as a formation compressional head wave (and a shear wave in rock fast enough) — only if cement couples pipe to rock.'},
+    {t:C3.tC, m:'casing', c:'#ff9a3c', h:`Casing signal leaks back to the 3-ft receiver (E1)`,
+     b:`The casing wave continuously radiates energy back into the fluid at θc. It reaches R3 at TT ≈ ${fmt(C3.tC)} µs. The first positive peak (E1) inside the amplitude gate is the CBL amplitude.`},
+    {t:C5.tC, m:'casing', c:'#ff9a3c', h:'Casing arrival at the 5-ft receiver',
+     b:`Reaches R5 at ≈ ${fmt(C5.tC)} µs — the start of the VDL. Free pipe gives strong straight casing bands; bonded pipe gives almost nothing here.`},
+    {t:C5.tP, m:'formation', c:'#4ade80', h:'Formation arrival returns to R5',
+     b:`Formation P wave (Δt ${fmt(C5.dt,1)} µs/ft) travels back out through cement, steel and fluid, arriving ≈ ${fmt(C5.tP)} µs. Its strength depends on cement-to-formation coupling.`},
+  ];
+  if(C5.tS) st.push({t:C5.tS, m:'formation', c:'#c084fc', h:'Formation shear arrival', b:`Shear head wave arrives ≈ ${fmt(C5.tS)} µs, usually larger and lower in frequency than the P wave.`});
+  st.push({t:C5.tM, m:'fluid', c:'#5ab4ff', h:'Direct fluid (mud) arrival', b:`Slowest path – straight up through the fluid: ≈ ${fmt(C5.tM)} µs, almost constant along the whole log.`});
+  st.push({t:Math.min(W_MAX-40,C5.tM+90), m:'', c:'#8ea3b5', h:'Ringing dies out – end of record', b:'This waveform becomes one row of the VDL. The tool moves up 0.5 ft and fires again.'});
+  st.sort((a,b)=>a.t-b.t);
+  return st;
+}
+let STAGES=[];
+const curStage = ()=>{ let k=0; STAGES.forEach((s,i)=>{ if(S.t>=s.t-0.01) k=i; }); return k; };
+
+/* =====================================================================
+   PANEL 1 – WELL OVERVIEW with logging unit
+   ===================================================================== */
+function drawOverview(){
+  const X=10,Y=10,Wd=220,Ht=820; panel(X,Y,Wd,Ht,'Well overview');
+  const cx=168, ySurf=150, yBot=Y+Ht-30, yOf=d=> ySurf+6 + d/CFG.td*(yBot-ySurf-6);
+  // sky + ground
+  const sky=ctx.createLinearGradient(0,Y+26,0,ySurf); sky.addColorStop(0,'#1a2b3c'); sky.addColorStop(1,'#2a3d4f');
+  ctx.fillStyle=sky; ctx.fillRect(X+1,Y+26,Wd-2,ySurf-Y-26);
+  ctx.fillStyle='#4a3b2c'; ctx.fillRect(X+1,ySurf,Wd-2,6);
+  // formations
+  for(let d=0; d<CFG.td; d+=8){ ctx.fillStyle=lithAt(d).col; ctx.globalAlpha=0.5; ctx.fillRect(cx-40,yOf(d),80,yOf(d+8)-yOf(d)+0.5); }
+  ctx.globalAlpha=1;
+  const sh=Math.min(CFG.surfShoe,CFG.td);
+  ctx.fillStyle=C_.cement; ctx.fillRect(cx-16,yOf(0),4,yOf(sh)-yOf(0)); ctx.fillRect(cx+12,yOf(0),4,yOf(sh)-yOf(0));
+  ctx.fillStyle=C_.steel; ctx.fillRect(cx-12,yOf(0),2,yOf(sh)-yOf(0)); ctx.fillRect(cx+10,yOf(0),2,yOf(sh)-yOf(0));
+  const toc=Math.max(0,Math.min(CFG.toc,CFG.td));
+  ctx.fillStyle=C_.cement; ctx.fillRect(cx-11,yOf(toc),5,yOf(CFG.td)-yOf(toc)); ctx.fillRect(cx+6,yOf(toc),5,yOf(CFG.td)-yOf(toc));
+  ctx.fillStyle='#24486a'; ctx.fillRect(cx-5,yOf(0),10,yOf(CFG.td)-yOf(0));
+  ctx.fillStyle=C_.steel; ctx.fillRect(cx-7,yOf(0),2,yOf(CFG.td)-yOf(0)); ctx.fillRect(cx+5,yOf(0),2,yOf(CFG.td)-yOf(0));
+  ctx.fillStyle='#e05d5d'; ctx.fillRect(cx-5,yOf(CFG.fc)-1,10,2);
+  txt('TOC '+fmt(CFG.toc),cx-44,yOf(CFG.toc)+4,C_.acc,'9px Segoe UI','right');
+  txt('FC '+fmt(CFG.fc),cx-44,yOf(CFG.fc)-2,'#e88','9px Segoe UI','right');
+  txt('TD '+fmt(CFG.td),cx-44,yOf(CFG.td)+9,C_.mut,'9px Segoe UI','right');
+  txt('Sfc csg '+sh,cx-44,yOf(sh)+4,C_.mut,'9px Segoe UI','right');
+  const step = CFG.td>2000?1000:500;
+  for(let d=0; d<=CFG.td; d+=step){ ctx.fillStyle=C_.mut; ctx.fillRect(cx+40,yOf(d),4,1); txt(d+'',cx+46,yOf(d)+3,C_.mut,'8px Segoe UI'); }
+  // log interval bracket
+  ctx.strokeStyle=C_.acc; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(cx+26,yOf(CFG.logTop)); ctx.lineTo(cx+32,yOf(CFG.logTop)); ctx.lineTo(cx+32,yOf(CFG.logBot)); ctx.lineTo(cx+26,yOf(CFG.logBot)); ctx.stroke(); ctx.lineWidth=1;
+
+  // ---------- SURFACE: wellhead, lubricator, mast, sheaves, logging unit ----------
+  // wellhead + valves
+  ctx.fillStyle='#7e8a96'; ctx.fillRect(cx-8,ySurf-10,16,10);
+  ctx.fillStyle='#c9302c'; ctx.fillRect(cx-10,ySurf-18,20,8);                 // BOP / valve
+  ctx.fillStyle='#d0d6dc'; ctx.fillRect(cx-3,ySurf-58,6,40);                  // lubricator
+  ctx.fillStyle='#ffb347'; ctx.fillRect(cx-5,ySurf-64,10,6);                  // grease head / stuffing box
+  // mast (crane boom) from truck-side ground to above the well
+  const mTop={x:cx+4,y:ySurf-112};
+  ctx.strokeStyle='#e0b03c'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(cx+38,ySurf); ctx.lineTo(mTop.x+6,mTop.y+4); ctx.stroke();
+  ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(cx+30,ySurf); ctx.lineTo(mTop.x+4,mTop.y+30); ctx.stroke();
+  // upper sheave hanging from mast tip
+  const uS={x:cx-2,y:ySurf-98, r:7};
+  ctx.strokeStyle='#bbb'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(mTop.x+6,mTop.y+4); ctx.lineTo(uS.x,uS.y-uS.r); ctx.stroke();
+  // lower sheave chained at wellhead base
+  const lS={x:cx-24,y:ySurf-7, r:6};
+  // truck (backed up – cab away from well, drum at rear facing the well)
+  const tx0=X+8, ty=ySurf-46;
+  ctx.fillStyle='#d9dee3'; ctx.beginPath(); ctx.roundRect(tx0+26,ty,82,38,3); ctx.fill();         // logging cabin / body
+  ctx.fillStyle='#2b5c84'; ctx.fillRect(tx0+26,ty+6,82,5);                                        // stripe
+  ctx.fillStyle='#2b5c84'; ctx.beginPath(); ctx.roundRect(tx0,ty+12,26,26,[6,0,0,2]); ctx.fill(); // cab (front, away from well)
+  ctx.fillStyle='#9cc6e8'; ctx.fillRect(tx0+4,ty+16,10,9);                                         // windshield
+  ctx.fillStyle='#3a4652'; ctx.fillRect(tx0+30,ty+14,14,10);                                       // cabin window (operator)
+  // rear drum bay (open)
+  ctx.fillStyle='#1e2a35'; ctx.fillRect(tx0+80,ty+12,28,26);
+  const dr={x:tx0+94,y:ty+25,r:10};
+  ctx.fillStyle='#55616d'; ctx.beginPath(); ctx.arc(dr.x,dr.y,dr.r,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#2e353c'; ctx.beginPath(); ctx.arc(dr.x,dr.y,dr.r-2.5,0,Math.PI*2); ctx.fill();          // wound cable
+  ctx.strokeStyle='#c9d1d8'; ctx.lineWidth=1.2;
+  for(let k=0;k<4;k++){ const a=S.drum+k*Math.PI/2; ctx.beginPath(); ctx.moveTo(dr.x,dr.y); ctx.lineTo(dr.x+Math.cos(a)*(dr.r-1),dr.y+Math.sin(a)*(dr.r-1)); ctx.stroke(); }
+  ctx.fillStyle='#ddd'; ctx.beginPath(); ctx.arc(dr.x,dr.y,2,0,Math.PI*2); ctx.fill();
+  // wheels
+  ctx.fillStyle='#111'; for(const wx of [tx0+12,tx0+70,tx0+92]){ ctx.beginPath(); ctx.arc(wx,ySurf-5,6,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#666'; ctx.beginPath(); ctx.arc(wx,ySurf-5,2,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#111'; }
+  txt('Logging unit',tx0+28,ty-4,C_.mut,'9px Segoe UI');
+  txt('drum',dr.x,ty+48+6,C_.mut,'8px Segoe UI','center');
+  // sheaves (spinning spokes)
+  const sheave=(s)=>{ ctx.strokeStyle='#e7e7e7'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.stroke();
+    ctx.lineWidth=1; for(let k=0;k<3;k++){ const a=S.drum*1.6+k*2.094; ctx.beginPath(); ctx.moveTo(s.x,s.y); ctx.lineTo(s.x+Math.cos(a)*s.r,s.y+Math.sin(a)*s.r); ctx.stroke(); } };
+  ctx.strokeStyle='#888'; ctx.beginPath(); ctx.moveTo(lS.x,lS.y+lS.r); ctx.lineTo(cx-8,ySurf-2); ctx.stroke(); // tie-down chain
+  // cable: drum (top) → lower sheave → upper sheave → lubricator → hole → tool
+  const yTool = yOf(S.tx);
+  ctx.strokeStyle='#f2f2f2'; ctx.lineWidth=1.2; ctx.beginPath();
+  ctx.moveTo(dr.x+2,dr.y-dr.r+2); ctx.lineTo(lS.x-lS.r*0.6,lS.y+lS.r*0.8);
+  ctx.moveTo(lS.x+lS.r*0.2,lS.y-lS.r); ctx.lineTo(uS.x-uS.r,uS.y);
+  ctx.moveTo(uS.x+uS.r,uS.y); ctx.lineTo(cx,ySurf-64);
+  ctx.moveTo(cx,ySurf-18); ctx.lineTo(cx,yTool-12); ctx.stroke();
+  sheave(lS); sheave(uS);
+  // depth readout box
+  ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(X+8,Y+30,92,30);
+  txt('DEPTH (Tx)',X+12,Y+41,C_.mut,'8px Segoe UI'); txt(fmt(S.tx,1)+' ft',X+12,Y+55,'#7ee2a0','600 12px Consolas, monospace');
+  // tool
+  ctx.fillStyle='#ffd27a'; ctx.fillRect(cx-2.5,yTool-12,5,14);
+  // zoom leader
+  ctx.strokeStyle='rgba(255,179,71,.35)'; ctx.setLineDash([4,4]); ctx.beginPath();
+  ctx.moveTo(cx+4,yTool-12); ctx.lineTo(240,60); ctx.moveTo(cx+4,yTool+2); ctx.lineTo(240,530); ctx.stroke(); ctx.setLineDash([]);
+  const ph={surface:'At surface – rigged up', rih:'Running in hole (not recording)', atTD:'On bottom – ready to log', logging:'Logging up – recording', done:'Log complete'}[S.phase];
+  const held = S.phase==='logging' && heldForSlowMo();
+  txt(ph + (S.paused&&S.phase==='logging'?' (paused)':'') + (held&&!S.paused?' · depth held':''), X+10, Y+Ht-10, S.phase==='logging'?'#7ee2a0':C_.acc,'600 10.5px Segoe UI');
+}
+const heldForSlowMo = ()=> S.hold && S.rate < 100;
+
+/* =====================================================================
+   PANEL 2 – DOWNHOLE CLOSE-UP (wave propagation + ray packets)
+   ===================================================================== */
+const ZP = {x:240,y:10,w:400,h:594, zMin:-0.8, zMax:5.9};
+function drawZoom(tau, C3, C5, stg){
+  panel(ZP.x,ZP.y,ZP.w,ZP.h,'Downhole close-up');
+  const top=ZP.y+50, bot=ZP.y+510, pxFt=(bot-top)/(ZP.zMax-ZP.zMin);
+  const cx=ZP.x+ZP.w/2;
+  const outerIn = G.bitR+2.6, pxIn = 182/outerIn;
+  txt('radial scale exaggerated ×'+(pxIn*12/pxFt).toFixed(1), ZP.x+ZP.w-10, ZP.y+19, C_.mut,'10px Segoe UI','right');
+  const yOf = z=> bot - (z-ZP.zMin)*pxFt;
+  const R = r=> r*pxIn;
+  const P = (r,z)=> [cx + R(r), yOf(z)];   // right-side point
+  ctx.save(); ctx.beginPath(); ctx.rect(ZP.x+1,top,ZP.w-2,bot-top); ctx.clip();
+  const step=2;
+  for(let y=top; y<bot; y+=step){
+    const z = (bot-y)/pxFt + ZP.zMin, d = S.tx - z;
+    const L = lithAt(d), B = bondAt(d);
+    ctx.fillStyle=L.col; ctx.fillRect(cx-R(outerIn),y,R(outerIn)-R(G.bitR),step); ctx.fillRect(cx+R(G.bitR),y,R(outerIn)-R(G.bitR),step);
+    if(d < CFG.surfShoe){
+      ctx.fillStyle='#2f5f88'; ctx.fillRect(cx-R(G.bitR),y,R(G.bitR)-R(G.odR),step); ctx.fillRect(cx+R(G.odR),y,R(G.bitR)-R(G.odR),step);
+      ctx.fillStyle=C_.steel; ctx.fillRect(cx-R(G.bitR+0.4),y,R(0.4),step); ctx.fillRect(cx+R(G.bitR),y,R(0.4),step);
+      ctx.fillStyle=C_.cement; ctx.fillRect(cx-R(outerIn),y,R(outerIn)-R(G.bitR+0.4),step); ctx.fillRect(cx+R(G.bitR+0.4),y,R(outerIn)-R(G.bitR+0.4),step);
+    } else if(B.cem){
+      ctx.fillStyle=C_.cement; ctx.globalAlpha=0.55+0.45*Math.max(B.bc,B.bf);
+      ctx.fillRect(cx-R(G.bitR),y,R(G.bitR)-R(G.odR),step);
+      if(B.zone==='channel'){ ctx.globalAlpha=1; ctx.fillStyle='#2f5f88'; }
+      ctx.fillRect(cx+R(G.odR),y,R(G.bitR)-R(G.odR),step); ctx.globalAlpha=1;
+      if(B.zone==='micro'){ ctx.fillStyle='#0a2a44'; ctx.fillRect(cx-R(G.odR)-2,y,2,step); ctx.fillRect(cx+R(G.odR),y,2,step); }
+    } else { ctx.fillStyle='#2f5f88'; ctx.fillRect(cx-R(G.bitR),y,R(G.bitR)-R(G.odR),step); ctx.fillRect(cx+R(G.odR),y,R(G.bitR)-R(G.odR),step); }
+    ctx.fillStyle='#24486a'; ctx.fillRect(cx-R(G.idR),y,R(G.idR)*2,step);
+    ctx.fillStyle=C_.steel; ctx.fillRect(cx-R(G.odR),y,R(G.odR)-R(G.idR),step); ctx.fillRect(cx+R(G.idR),y,R(G.odR)-R(G.idR),step);
+  }
+  for(const c of COLLARS){ const z=S.tx-c; if(z>ZP.zMin-1 && z<ZP.zMax+1){ const y1=yOf(z+0.4), y2=yOf(z-0.4);
+    ctx.fillStyle='#a7b2bd'; ctx.fillRect(cx-R(G.odR+0.35),y1,R(0.35)+2,y2-y1); ctx.fillRect(cx+R(G.odR)-2,y1,R(0.35)+2,y2-y1);
+    txt('collar',cx+R(G.odR+0.4)+3,(y1+y2)/2+3,'#dfe6ec','9px Segoe UI'); } }
+
+  const firing = firingNow();
+  const slowMo = S.rate < 100;
+  if(firing && tau>0){
+    const att = z=>{ const n=Math.max(2,Math.ceil(Math.abs(z)/0.1)); let s=0; for(let i=0;i<n;i++){ s+=bondAt(S.tx-z*(i+0.5)/n).bc; } return ALPHA0*Math.abs(z)+ALPHA_MAX*(s/n)*Math.abs(z); };
+    const tHit = G.gapFt*DT_FL;
+    // (a) direct fluid wavefront
+    const Rf = tau/DT_FL;
+    if(Rf < 7){
+      ctx.save(); ctx.beginPath(); ctx.rect(cx-R(G.idR),top,R(G.idR)-R(G.toolR),bot-top); ctx.rect(cx+R(G.toolR),top,R(G.idR)-R(G.toolR),bot-top); ctx.clip();
+      ctx.strokeStyle=`rgba(110,190,255,${(slowMo?0.55:0.9)*Math.exp(-Rf/5)})`; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.ellipse(cx,yOf(0),R(Rf*12),Rf*pxFt,0,0,Math.PI*2); ctx.stroke(); ctx.restore();
+    }
+    // (b) casing ringing
+    if(tau > tHit){
+      for(let y=top; y<bot; y+=2){
+        const z=(bot-y)/pxFt+ZP.zMin; const age = tau - (Math.abs(z)*DT_ST + G.gapFt*KHW); if(age<=0) continue;
+        const b = bondAt(S.tx-z).bc;
+        const a = Math.pow(10,-att(z)/20)*wavelet(age,F0,40+260*Math.pow(1-b,2));
+        const I = Math.min(1,Math.abs(a)*1.6); if(I<0.02) continue;
+        const dx = a*5;
+        ctx.fillStyle=`rgba(255,150,50,${I})`;
+        ctx.fillRect(cx-R(G.odR)-dx,y,R(G.odR)-R(G.idR),2); ctx.fillRect(cx+R(G.idR)+dx,y,R(G.odR)-R(G.idR),2);
+        const B=bondAt(S.tx-z);
+        if(B.cem && S.tx-z>=CFG.surfShoe){ ctx.fillStyle=`rgba(255,120,40,${0.55*B.bc*Math.min(1,Math.abs(a)*3)})`;
+          ctx.fillRect(cx-R(G.bitR),y,R(G.bitR)-R(G.odR),2); if(B.zone!=='channel') ctx.fillRect(cx+R(G.odR),y,R(G.bitR)-R(G.odR),2); }
+      }
+      if(!slowMo){
+        const zF = (tau - G.gapFt*KHW)/DT_ST, dz = G.gapFt*KHW/DT_ST, aF = Math.pow(10,-att(zF)/20);
+        ctx.strokeStyle=`rgba(255,170,80,${Math.min(0.95,aF*1.3)})`; ctx.lineWidth=2;
+        for(const sgn of [1,-1]) for(const side of [-1,1]){ ctx.beginPath(); ctx.moveTo(cx+side*R(G.idR),yOf(sgn*zF)); ctx.lineTo(cx+side*R(G.toolR),yOf(sgn*(zF-dz))); ctx.stroke(); }
+      }
+    }
+    // (c) formation fronts (wide bands) – shown in normal speed
+    if(!slowMo){
+      const fr=[{dt:C5.dt,col:'74,222,128'}]; if(C5.tS) fr.push({dt:1.75*C5.dt,col:'192,132,252'});
+      for(const F of fr){ const zP=(tau-G.legs)/F.dt; if(zP<=0) continue;
+        for(const sgn of [1,-1]){ const z=sgn*zP, yy=yOf(z); if(yy<top-20||yy>bot+20) continue;
+          const B=bondAt(S.tx-z), cp=B.cem?B.bf:0.1, al=Math.min(1,0.15+cp);
+          const g=ctx.createLinearGradient(0,yy,0,yy+sgn*0.45*pxFt); g.addColorStop(0,`rgba(${F.col},${al})`); g.addColorStop(1,`rgba(${F.col},0)`);
+          ctx.fillStyle=g; const h=sgn*0.45*pxFt;
+          ctx.fillRect(cx-R(outerIn),yy,R(outerIn)-R(G.bitR),h); ctx.fillRect(cx+R(G.bitR),yy,R(outerIn)-R(G.bitR),h); } }
+    }
+    // (d) RAY PACKETS – explicit paths with travel times
+    drawRays(tau, C3, C5, {cx,R,yOf,P,pxFt,top,bot,att,slowMo,outerIn});
+  }
+  // TOOL
+  const tl = cx-R(G.toolR), tw = R(G.toolR)*2;
+  ctx.fillStyle=C_.tool; ctx.fillRect(tl,top,tw,bot-top);
+  ctx.fillStyle='#2d3741'; for(let z=0.35; z<2.65; z+=0.18){ const yy=yOf(z); ctx.fillRect(tl+2,yy-2,tw-4,3); }
+  ctx.strokeStyle='rgba(183,195,206,.45)'; ctx.lineWidth=1.2;
+  for(const zc of [-0.55,5.6]) for(const side of [-1,1]){ ctx.beginPath(); ctx.moveTo(cx+side*R(G.toolR),yOf(zc-0.25)); ctx.quadraticCurveTo(cx+side*R(G.idR)*1.05,yOf(zc),cx+side*R(G.toolR),yOf(zc+0.25)); ctx.stroke(); }
+  if(firing && tau>0){ const zT = tau/DT_ST*0.6, a = Math.exp(-zT/0.45); if(a>0.04){ ctx.fillStyle=`rgba(255,255,255,${a})`; ctx.fillRect(tl,yOf(zT)-2,tw,4); } }
+  const glow3 = firing? Math.min(1,Math.abs(waveAt(C3,S.t))/Math.max(4,C3.Ac*0.6)) : 0;
+  const glow5 = firing? Math.min(1,Math.abs(waveAt(C5,S.t))/6) : 0;
+  const elem=(z,col,g,lab)=>{ const yy=yOf(z); ctx.save(); ctx.shadowColor=col; ctx.shadowBlur=4+22*g; ctx.fillStyle=col; ctx.fillRect(tl-2,yy-6,tw+4,12); ctx.restore();
+    txt(lab,cx-R(outerIn)+4,yy+4,'#fff','600 11px Segoe UI');
+    ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.beginPath(); ctx.moveTo(cx-R(outerIn)+8+ctx.measureText(lab).width,yy); ctx.lineTo(tl-4,yy); ctx.stroke(); };
+  elem(0,'#ff7b54',firing?Math.max(0,1-tau/25):0,'Tx');
+  elem(3,'#3dd6e8',glow3,'R 3 ft');
+  elem(5,'#3dd6e8',glow5,'R 5 ft');
+  ctx.restore();
+  // medium labels (highlight the medium the current stage is in)
+  const medium = firing && stg ? stg.m : '';
+  let li=0; const lab=(r,s,col,key)=>{ const x=cx+R(r), ly=ZP.y+(li++%2?42:31);
+    if(medium===key){ ctx.font='600 10px Segoe UI'; const w=ctx.measureText(s).width+10; ctx.fillStyle=col; ctx.beginPath(); ctx.roundRect(x-w/2,ly-11,w,15,7); ctx.fill(); txt(s,x,ly,'#111','600 10px Segoe UI','center'); }
+    else txt(s,x,ly,col,'10px Segoe UI','center');
+    ctx.strokeStyle=medium===key?col:'rgba(255,255,255,.35)'; ctx.lineWidth=medium===key?2:1; ctx.beginPath(); ctx.moveTo(x,ly+4); ctx.lineTo(x,top+2); ctx.stroke(); ctx.lineWidth=1; };
+  lab(0,'Tool','#cfd8e0','tool'); lab((G.toolR+G.idR)/2,'Fluid','#8fc8ff','fluid'); lab((G.idR+G.odR)/2+0.3,'Casing','#ffbe85','casing');
+  lab((G.odR+G.bitR)/2+0.2,'Cement','#d8ceb4','cement'); lab(G.bitR+1.4,'Formation','#9be8b4','formation');
+  txt('Tx '+fmt(S.tx,1)+' ft',ZP.x+ZP.w-8,yOf(0)-8,'#ffd2c2','10px Segoe UI','right');
+  if(!firing){ ctx.fillStyle='rgba(13,20,27,.75)'; ctx.fillRect(ZP.x+40,ZP.y+250,ZP.w-80,52);
+    txt(S.phase==='rih'?'Running in hole – tool not firing':'Tool at surface',ZP.x+ZP.w/2,ZP.y+272,'#fff','600 13px Segoe UI','center');
+    txt('CBL/VDL is recorded on the way UP at constant speed',ZP.x+ZP.w/2,ZP.y+291,C_.mut,'11px Segoe UI','center'); }
+  else { ctx.fillStyle='rgba(13,20,27,.7)'; ctx.fillRect(cx-95,bot-22,190,18); txt(`t = ${fmt(S.t,1)} µs after firing (T0)`,cx,bot-8,'#fff','600 12px Segoe UI','center'); }
+}
+
+function drawRays(tau, C3, C5, g){
+  const {cx,R,yOf,slowMo} = g;
+  const tanc=Math.tan(THC), cosc=Math.cos(THC);
+  const zE = G.gapFt*tanc;                      // ft gained crossing fluid at θc
+  const t1 = G.gapFt/cosc*DT_FL;                // fluid crossing time at θc
+  const rC = (G.idR+G.odR)/2;                   // mid-wall radius
+  const al = slowMo?1:0.55, dotR = slowMo?5:3.5;
+  const pt=(r,z)=>[cx+R(r), yOf(z)];
+  const lerp=(a,b,f)=>[a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f];
+  // trace a polyline of timed nodes; draw traversed part + moving dot
+  function path(nodes, col, label, alpha){
+    if(tau<=nodes[0].t) return null;
+    ctx.strokeStyle=col; ctx.globalAlpha=alpha*al; ctx.lineWidth=slowMo?2.2:1.5; ctx.beginPath();
+    let p0=pt(nodes[0].r,nodes[0].z); ctx.moveTo(p0[0],p0[1]); let head=p0, done=false, seg=0;
+    for(let i=1;i<nodes.length;i++){
+      const a=nodes[i-1], b=nodes[i];
+      const pa=pt(a.r,a.z), pb=pt(b.r,b.z);
+      if(tau>=b.t){ ctx.lineTo(pb[0],pb[1]); head=pb; seg=i; }
+      else { const f=(tau-a.t)/(b.t-a.t); head=lerp(pa,pb,f); ctx.lineTo(head[0],head[1]); seg=i; done=true; break; }
+    }
+    ctx.stroke(); ctx.globalAlpha=1;
+    const live = done || tau < nodes[nodes.length-1].t+25;
+    if(live){
+      ctx.save(); ctx.shadowColor=col; ctx.shadowBlur=14; ctx.fillStyle='#fff'; ctx.globalAlpha=alpha;
+      ctx.beginPath(); ctx.arc(head[0],head[1],dotR,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle=col; ctx.beginPath(); ctx.arc(head[0],head[1],dotR-1.5,0,Math.PI*2); ctx.fill(); ctx.restore();
+      if(slowMo && done && label){ const lb=label(seg); if(lb){ ctx.font='600 10px Segoe UI'; const w=ctx.measureText(lb).width+8;
+        const lx = head[0]+8+w > ZP.x+ZP.w-4 ? head[0]-8-w : head[0]+8; ctx.fillStyle='rgba(10,16,22,.85)'; ctx.fillRect(lx,head[1]-16,w,14); txt(lb,lx+4,head[1]-5,col,'600 10px Segoe UI'); } }
+    }
+    return head;
+  }
+  // --- 1) CASING PATH to R3 and R5 (head-wave geometry, timed) ---
+  const tAlong = z => t1 + (z-zE)*DT_ST;
+  const casingNodes = rx => [
+    {r:G.toolR,z:0,t:0}, {r:G.idR,z:zE,t:t1}, {r:rC,z:zE+0.02,t:t1+1},
+    {r:rC,z:rx-zE,t:tAlong(rx-zE)}, {r:G.idR,z:rx-zE+0.02,t:tAlong(rx-zE)+1}, {r:G.toolR,z:rx,t:tAlong(rx-zE)+t1}];
+  const lblC = s=> s===1?`fluid ${DT_FL} µs/ft`: s<=3?`steel ${DT_ST} µs/ft`: s===4?'leaks back':'→ receiver';
+  path(casingNodes(5),'#ff9a3c',lblC,1);
+  path(casingNodes(3).slice(0,6),'#ffc078',null,0.9);
+  // --- 2) FORMATION PATH (deck straight-leg method: radial legs) ---
+  const tf=G.gapFt*DT_FL, tw=tf+G.wallFt*DT_ST, tcm=G.legs, rF=G.bitR+0.6;
+  const dtF=C5.dt, coup=Math.min(1,C5.coup+0.1);
+  const formNodes = rx => [
+    {r:G.toolR,z:0.08,t:0}, {r:G.idR,z:0.08,t:tf}, {r:G.odR,z:0.08,t:tw}, {r:G.bitR,z:0.08,t:tcm}, {r:rF,z:0.1,t:tcm+0.3},
+    {r:rF,z:rx-0.1,t:tcm+rx*dtF}, {r:G.bitR,z:rx-0.08,t:tcm+rx*dtF+0.3}, {r:G.odR,z:rx-0.08,t:tcm+rx*dtF+(G.cemFt*DT_CM)},
+    {r:G.idR,z:rx-0.08,t:tcm+rx*dtF+G.cemFt*DT_CM+G.wallFt*DT_ST}, {r:G.toolR,z:rx-0.08,t:2*tcm+rx*dtF}];
+  const lblF = s=> ['',`fluid ${DT_FL} µs/ft`,`steel ${DT_ST}`,`cement ${DT_CM} µs/ft`,'',`formation ${fmt(dtF,0)} µs/ft`,'','back through cement','steel','fluid → R5'][s]||'';
+  path(formNodes(5),'#4ade80',lblF,0.35+0.65*coup);
+  // shear
+  if(C5.tS){ const dS=1.75*dtF; const n=formNodes(5).map(o=>({...o})); for(let i=5;i<n.length;i++) n[i].t += 5*(dS-dtF);
+    path(n,'#c084fc',s=>s===5?`shear ${fmt(dS,0)} µs/ft`:'',0.3+0.6*coup); }
+  // --- 3) DIRECT FLUID PATH ---
+  const rM=(G.toolR+G.idR)/2*0.55+G.toolR*0.45;
+  path([{r:G.toolR+0.05,z:0.05,t:0},{r:rM,z:0.4,t:0.4*DT_FL+5},{r:rM,z:4.6,t:4.6*DT_FL},{r:G.toolR,z:5,t:5*DT_FL}],'#5ab4ff',s=>s===2?`fluid ${DT_FL} µs/ft`:'',0.9);
+  // --- 4) REFLECTION at casing ID (normal incidence) ---
+  if(slowMo){
+    const tr=G.gapFt*DT_FL;
+    path([{r:G.toolR,z:-0.2,t:0},{r:G.idR,z:-0.2,t:tr},{r:G.toolR,z:-0.2,t:2*tr}],'#ffffff',s=>s===2?'reflection (not used by CBL)':'',0.7);
+  }
+}
+
+/* =====================================================================
+   PANEL 3 – SIGNAL SEQUENCE (stage narration + time ribbon)
+   ===================================================================== */
+const ZTEXT = {
+  free:['Free pipe','casing rings freely – high amplitude, straight casing bands, chevrons at collars, weak formation.'],
+  toc:['Top of cement','amplitude falls as cement contact improves.'],
+  good:['Good bond','ringing damped – low amplitude, no casing bands, strong wavy formation arrivals.'],
+  micro:['Microannulus','moderate amplitude AND casing bands, but formation arrivals still visible.'],
+  channel:['Channel / partial bond','intermediate amplitude, faint casing bands, weak formation.']};
+function drawSequence(C5){
+  const X=240,Y=610,Wd=400,Ht=220; panel(X,Y,Wd,Ht,'Signal sequence','one firing · '+(STAGES.length)+' stages');
+  const firing=firingNow(), k=firing?curStage():-1;
+  // stage dots
+  const n=STAGES.length, dx=(Wd-30)/(n-1);
+  for(let i=0;i<n;i++){ const x=X+15+i*dx, y=Y+38, s=STAGES[i];
+    if(i<n-1){ ctx.strokeStyle=i<k?'#ffb347':'#33475a'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x+8,y); ctx.lineTo(x+dx-8,y); ctx.stroke(); ctx.lineWidth=1; }
+    ctx.fillStyle=i===k?s.c:(i<k?'#4a5e70':'#22313f'); ctx.beginPath(); ctx.arc(x,y,i===k?9:7,0,Math.PI*2); ctx.fill();
+    if(i===k){ ctx.strokeStyle='#fff'; ctx.stroke(); }
+    txt(String(i+1),x,y+3.5,i===k?'#111':'#cfd8e0',(i===k?'700 ':'')+'9px Segoe UI','center'); }
+  // stage text
+  const s = firing ? STAGES[k] : {h:'Tool not firing',b:'Run in hole, then log up. Each firing is broken into stages here – use Ray path speed and Step ▶ to walk through them.',c:'#8ea3b5'};
+  txt((firing?(k+1)+'. ':'')+s.h, X+12, Y+66, s.c, '600 13px Segoe UI');
+  let yy = wrapText(s.b, X+12, Y+83, Wd-24, 13.5, '#d3dde6', '11.5px Segoe UI');
+  // zone note
+  const mp=S.tx-2.5, B=bondAt(mp), L=lithAt(mp); let zt=ZTEXT[B.zone];
+  if(L.type==='lime' && B.cem) zt=['Fast formation','rock (47.6 µs/ft) is faster than steel – its arrival can beat the casing signal and contaminate amplitude/TT.'];
+  ctx.fillStyle='#0f1922'; ctx.fillRect(X+6,Y+144,Wd-12,30);
+  txt('At '+fmt(mp,1)+' ft – '+zt[0]+':',X+12,Y+156,C_.acc,'600 10.5px Segoe UI');
+  txt(zt[1],X+12,Y+169,'#b9c7d3','10px Segoe UI');
+  // time ribbon
+  const rx0=X+12, rw=Wd-24, ry=Y+190, tx=t=>rx0+t/W_MAX*rw;
+  ctx.fillStyle='#0f1922'; ctx.fillRect(rx0,ry,rw,10);
+  if(firing){ ctx.fillStyle='rgba(255,179,71,.35)'; ctx.fillRect(rx0,ry,tx(S.t)-rx0,10); }
+  STAGES.forEach((st,i)=>{ ctx.fillStyle=st.c; ctx.fillRect(tx(st.t)-1,ry-3,2.5,16); });
+  if(firing){ ctx.fillStyle='#fff'; ctx.beginPath(); ctx.moveTo(tx(S.t),ry+12); ctx.lineTo(tx(S.t)-5,ry+19); ctx.lineTo(tx(S.t)+5,ry+19); ctx.fill(); }
+  for(let t=0;t<=W_MAX;t+=200) txt(t+'',tx(t),ry+28,C_.mut,'9px Segoe UI','center');
+  txt('µs',rx0+rw,ry-4,C_.mut,'9px Segoe UI','right');
+}
+
+/* =====================================================================
+   PANEL 4 – 3-FT RECEIVER (CBL)
+   ===================================================================== */
+function drawR3(C3){
+  const X=650,Y=10,Wd=450,Ht=180; panel(X,Y,Wd,Ht,'3-ft receiver (CBL)');
+  const m = measureCBL(S.tx);
+  txt(`Amp ${fmt(m.amp,1)} mV (free pipe ${G.fp})  ·  TT ${fmt(m.tt,1)} µs`, X+Wd-10, Y+19, '#ffd9a8','600 11px Segoe UI','right');
+  const x=X+10,y=Y+28,w=Wd-20,h=128;
+  ctx.fillStyle='#0f1922'; ctx.fillRect(x,y,w,h);
+  const tx=t=>x+t/W_MAX*w; const N=600; let mx=0; const arr=new Float32Array(N+1);
+  for(let i=0;i<=N;i++){ arr[i]=waveAt(C3,i*W_MAX/N); mx=Math.max(mx,Math.abs(arr[i])); }
+  const sc=Math.max(5,mx*1.12), yc=y+h/2, k=(h/2-4)/sc;
+  ctx.strokeStyle='#22313f'; for(let t=0;t<=W_MAX;t+=100){ ctx.beginPath(); ctx.moveTo(tx(t),y); ctx.lineTo(tx(t),y+h); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(x,yc); ctx.lineTo(x+w,yc); ctx.stroke();
+  ctx.fillStyle='rgba(255,179,71,.15)'; ctx.fillRect(tx(G.gateOpen),y,tx(G.gateOpen+GATE_W)-tx(G.gateOpen),h);
+  ctx.strokeStyle='rgba(255,179,71,.8)'; ctx.setLineDash([3,3]); ctx.beginPath(); ctx.moveTo(x,yc-THR*k); ctx.lineTo(x+w,yc-THR*k); ctx.stroke(); ctx.setLineDash([]);
+  txt('gate '+fmt(G.gateOpen)+'–'+fmt(G.gateOpen+GATE_W)+' µs',tx(G.gateOpen+GATE_W)+3,y+11,C_.acc,'9px Segoe UI');
+  txt('threshold 1 mV',x+w-4,yc-THR*k-3,C_.acc,'9px Segoe UI','right');
+  const cut = firingNow()? S.t : 0;
+  ctx.strokeStyle='rgba(140,160,180,.25)'; ctx.beginPath(); for(let i=0;i<=N;i++){ const px=x+i/N*w, py=yc-arr[i]*k; i?ctx.lineTo(px,py):ctx.moveTo(px,py); } ctx.stroke();
+  ctx.lineWidth=1.6; ctx.strokeStyle='#e9f2f8'; ctx.beginPath();
+  for(let i=0;i<=N;i++){ if(i*W_MAX/N>cut) break; const px=x+i/N*w, py=yc-arr[i]*k; i?ctx.lineTo(px,py):ctx.moveTo(px,py); } ctx.stroke(); ctx.lineWidth=1;
+  if(firingNow()){ ctx.strokeStyle=C_.acc; ctx.beginPath(); ctx.moveTo(tx(cut),y); ctx.lineTo(tx(cut),y+h); ctx.stroke(); }
+  txt('±'+fmt(sc,1)+' mV',x+w-4,y+h-5,C_.mut,'9px Segoe UI','right');
+  txt(`model free-pipe TT ${fmt(G.ttModel,0)} µs (deck table ${G.tt})`,x+6,y+h-5,C_.mut,'9px Segoe UI');
+  for(let t=0;t<=W_MAX;t+=200) txt(t+'',tx(t),y+h+11,C_.mut,'9px Segoe UI','center');
+}
+
+/* =====================================================================
+   PANEL 5 – HOW THE VDL IS BUILT (5 steps)
+   ===================================================================== */
+let lastStrip=null;
+function drawBuilder(C5){
+  const X=650,Y=200,Wd=450,Ht=630; panel(X,Y,Wd,Ht,'How the VDL is built','one firing at one depth → one row of the VDL');
+  const x0=X+44, w=Wd-58, tx=t=> x0+(t-VDL_T0)/(VDL_T1-VDL_T0)*w;
+  const firing=firingNow(), cut = firing ? S.t : 0;
+  const stepH=(n,y,s)=>{ ctx.fillStyle=C_.acc; ctx.beginPath(); ctx.arc(X+18,y-4,9,0,Math.PI*2); ctx.fill(); txt(n,X+18,y,'#111','700 10px Segoe UI','center'); txt(s,X+32,y,'#e6eef5','600 11px Segoe UI'); };
+  const N=394, vals=new Float32Array(N+1); let mx=0;
+  for(let i=0;i<=N;i++){ vals[i]=waveAt(C5,VDL_T0+i/N*(VDL_T1-VDL_T0)); mx=Math.max(mx,Math.abs(vals[i])); }
+  const tOfI = i=> VDL_T0+i/N*(VDL_T1-VDL_T0);
+  const curV = firing && cut>=VDL_T0 ? waveAt(C5,cut) : 0;
+
+  // ---- STEP 1: wiggle trace ----
+  stepH('1',Y+42,'Record the 5-ft waveform: amplitude (mV) vs time (µs)');
+  const y1=Y+50, h1=78, yc1=y1+h1/2, k1=(h1/2-5)/Math.max(6,mx);
+  ctx.fillStyle='#e9edf1'; ctx.fillRect(x0,y1,w,h1);
+  ctx.strokeStyle='#b8c1ca'; ctx.beginPath(); ctx.moveTo(x0,yc1); ctx.lineTo(x0+w,yc1); ctx.stroke();
+  ctx.strokeStyle='#1b2a38'; ctx.lineWidth=1.3; ctx.beginPath();
+  for(let i=0;i<=N;i++){ const px=x0+i/N*w, py=yc1-vals[i]*k1; i?ctx.lineTo(px,py):ctx.moveTo(px,py); } ctx.stroke(); ctx.lineWidth=1;
+  const marks=[[C5.tC,'casing','#d0701c'],[C5.tP,'formation P','#1f9d55'],[C5.tS,'shear','#8b5cf6'],[C5.tM,'fluid','#2f80d1']];
+  for(const m of marks){ if(!m[0]||m[0]<VDL_T0) continue; ctx.strokeStyle=m[2]; ctx.setLineDash([2,3]); ctx.beginPath(); ctx.moveTo(tx(m[0]),y1); ctx.lineTo(tx(m[0]),y1+h1); ctx.stroke(); ctx.setLineDash([]); txt(m[1],tx(m[0])+2,y1+10,m[2],'600 9px Segoe UI'); }
+  if(firing && cut<VDL_T1){ ctx.fillStyle='rgba(21,32,43,.6)'; const xs=Math.max(x0,tx(cut)); ctx.fillRect(xs,y1,x0+w-xs,h1); }
+  if(firing && cut>=VDL_T0 && cut<=VDL_T1){ const px=tx(cut), py=yc1-curV*k1; ctx.fillStyle=C_.acc; ctx.beginPath(); ctx.arc(px,py,4,0,Math.PI*2); ctx.fill(); }
+  txt('+',x0-8,y1+12,'#cfd8e0','700 11px Segoe UI','center'); txt('0',x0-8,yc1+4,'#cfd8e0','10px Segoe UI','center'); txt('−',x0-8,y1+h1-4,'#cfd8e0','700 11px Segoe UI','center');
+  for(let t=VDL_T0;t<=VDL_T1;t+=200) txt(t+'',tx(t),y1+h1+10,C_.mut,'9px Segoe UI','center');
+
+  // ---- STEP 2: gray-scale lookup ----
+  stepH('2',Y+160,'Look up each sample on a gray scale');
+  const y2=Y+168, rw=w*0.62, rx=x0;
+  for(let i=0;i<rw;i++){ const v=(i/rw*2-1)*VGAIN*1.6; const g=vdlGray(v,S.vdlMode); ctx.fillStyle=`rgb(${g},${g},${g})`; ctx.fillRect(rx+i,y2,1.5,18); }
+  ctx.strokeStyle='#5a6a7a'; ctx.strokeRect(rx,y2,rw,18);
+  txt('−'+fmt(VGAIN*1.6,0)+' mV',rx,y2+29,C_.mut,'9px Segoe UI'); txt('0',rx+rw/2,y2+29,C_.mut,'9px Segoe UI','center'); txt('+'+fmt(VGAIN*1.6,0)+' mV',rx+rw,y2+29,C_.mut,'9px Segoe UI','right');
+  if(firing && cut>=VDL_T0){
+    const f=Math.max(0,Math.min(1,(curV/(VGAIN*1.6)+1)/2)); const px=rx+f*rw;
+    ctx.fillStyle=C_.acc; ctx.beginPath(); ctx.moveTo(px,y2-1); ctx.lineTo(px-5,y2-8); ctx.lineTo(px+5,y2-8); ctx.fill();
+    const g=vdlGray(curV,S.vdlMode); const cx2=rx+rw+16;
+    ctx.fillStyle=`rgb(${g},${g},${g})`; ctx.fillRect(cx2,y2-4,26,26); ctx.strokeStyle=C_.acc; ctx.strokeRect(cx2,y2-4,26,26);
+    const dark=Math.round((255-g)/2.55);
+    txt(`${fmt(cut,0)} µs`,cx2+32,y2+5,'#e6eef5','600 10px Segoe UI');
+    txt(`${curV>=0?'+':''}${fmt(curV,1)} mV`,cx2+32,y2+17,'#e6eef5','10px Segoe UI');
+    txt(`→ ${dark}% dark`,cx2+32,y2+29,C_.acc,'10px Segoe UI');
+  } else txt('(waiting for signal)',rx+rw+16,y2+13,C_.mut,'10px Segoe UI');
+  txt(S.vdlMode==='full'?'+ peak → black · 0 → mid gray · − trough → white':'MSG: only + peaks are shaded (graded to black); negatives clipped to white',x0,y2+44,'#b9c7d3','10px Segoe UI');
+
+  // ---- STEP 3: side view → top view ----
+  stepH('3',Y+236,'Turn the trace on its side: view it from above');
+  const y3=Y+244, h3=60, yc3=y3+h3/2, k3=(h3/2-3)/Math.max(6,mx);
+  ctx.fillStyle='#8a8a8a'; ctx.fillRect(x0,y3,w,h3);
+  for(let i=0;i<N;i++){ const t=tOfI(i); if(!firing||t>cut) break; const v=vals[i]; const g=vdlGray(v,S.vdlMode);
+    ctx.fillStyle=`rgb(${g},${g},${g})`; const hh=-v*k3; ctx.fillRect(x0+i/N*w,Math.min(yc3,yc3+hh),w/N+0.6,Math.abs(hh)); }
+  ctx.strokeStyle='#444'; ctx.beginPath(); ctx.moveTo(x0,yc3); ctx.lineTo(x0+w,yc3); ctx.stroke();
+  txt('side',x0-4,y3+18,C_.mut,'9px Segoe UI','right'); txt('view',x0-4,y3+29,C_.mut,'9px Segoe UI','right');
+  const ys=y3+h3+26, hs=22;
+  ctx.fillStyle='#15202b'; ctx.fillRect(x0,ys,w,hs);
+  for(let i=0;i<N;i++){ const t=tOfI(i); if(!firing||t>cut) break; const g=vdlGray(vals[i],S.vdlMode); ctx.fillStyle=`rgb(${g},${g},${g})`; ctx.fillRect(x0+i/N*w,ys,w/N+0.6,hs); }
+  ctx.strokeStyle='#5a6a7a'; ctx.strokeRect(x0,ys,w,hs);
+  txt('top',x0-4,ys+9,C_.mut,'9px Segoe UI','right'); txt('view',x0-4,ys+20,C_.mut,'9px Segoe UI','right');
+  // projection lines from extrema
+  ctx.setLineDash([2,2]);
+  for(let i=1;i<N;i++){ const t=tOfI(i); if(!firing||t>cut) break; const v=vals[i];
+    if(Math.abs(v)>1.2 && ((v>vals[i-1]&&v>=vals[i+1])||(v<vals[i-1]&&v<=vals[i+1]))){
+      if(S.vdlMode==='msg' && v<0) continue;
+      const px=x0+i/N*w; ctx.strokeStyle=v>0?'rgba(255,179,71,.8)':'rgba(140,200,255,.8)';
+      ctx.beginPath(); ctx.moveTo(px,yc3-v*k3); ctx.lineTo(px,ys); ctx.stroke(); } }
+  ctx.setLineDash([]);
+  txt('peaks → dark bands, troughs → light bands; height dropped, only shade kept',x0,ys+hs+12,'#b9c7d3','9.5px Segoe UI');
+
+  // ---- STEP 4: stack wiggles vs shaded rows ----
+  stepH('4',Y+380,'Repeat at every depth and stack the rows');
+  const y4=Y+390, nR=6, rh=21, lw=w*0.47, sx=x0+w*0.53, sw=w*0.47;
+  const mp=S.tx-2.5;
+  txt('wiggle traces',x0+lw/2,y4+4,C_.mut,'9px Segoe UI','center'); txt('same rows, shaded',sx+sw/2,y4+4,C_.mut,'9px Segoe UI','center');
+  for(let r=0;r<nR;r++){
+    const d = mp + r*2; if(d>CFG.logBot+0.01 && r>0) continue;
+    const C = r===0? C5 : compsAt(d+2.5,5);
+    const yy=y4+10+r*rh, ycr=yy+rh/2;
+    txt(fmt(d,1),x0-4,ycr+3,r===0?C_.acc:'#9fb0bf','9px Segoe UI','right');
+    ctx.fillStyle='#e9edf1'; ctx.fillRect(x0,yy+1,lw,rh-2);
+    ctx.strokeStyle='#1b2a38'; ctx.fillStyle='#111'; const M=120;
+    for(let i=0;i<M;i++){ const t=VDL_T0+i/M*(VDL_T1-VDL_T0); if(r===0&&(!firing||t>cut)) break;
+      const v=waveAt(C,t); const hh=Math.max(-1,Math.min(1,v/VGAIN))*(rh/2-1);
+      if(v>0) ctx.fillRect(x0+i/M*lw,ycr-hh,lw/M+0.5,hh); }
+    ctx.beginPath(); for(let i=0;i<=M;i++){ const t=VDL_T0+i/M*(VDL_T1-VDL_T0); if(r===0&&(!firing||t>cut)) break;
+      const v=waveAt(C,t); const py=ycr-Math.max(-1,Math.min(1,v/VGAIN))*(rh/2-1); i?ctx.lineTo(x0+i/M*lw,py):ctx.moveTo(x0+i/M*lw,py); } ctx.stroke();
+    for(let i=0;i<M;i++){ const t=VDL_T0+i/M*(VDL_T1-VDL_T0); if(r===0&&(!firing||t>cut)) break; const g=vdlGray(waveAt(C,t),S.vdlMode); ctx.fillStyle=`rgb(${g},${g},${g})`; ctx.fillRect(sx+i/M*sw,yy+1,sw/M+0.6,rh-2); }
+    if(r===0){ ctx.strokeStyle=C_.acc; ctx.strokeRect(x0-0.5,yy+0.5,lw+1,rh-1); ctx.strokeRect(sx-0.5,yy+0.5,sw+1,rh-1); }
+  }
+  arrow(x0+lw+3,y4+10+rh*3.5,sx-3,y4+10+rh*3.5,C_.acc);
+  txt('newest on top (tool moving up) · shown every 2 ft; recorded every 0.5 ft',x0,y4+10+nR*rh+11,'#b9c7d3','9.5px Segoe UI');
+
+  // ---- STEP 5: continuous VDL ----
+  stepH('5',Y+562,'Rows touching edge to edge = the VDL track');
+  const y5=Y+570, h5=52, i0=Math.max(0,Math.round((mp-CFG.logTop)/ROW)), nShow=Math.min(110,NROWS-i0);
+  ctx.fillStyle='#0d141b'; ctx.fillRect(x0,y5,w-26,h5);
+  if(nShow>0){ ctx.imageSmoothingEnabled=false; ctx.drawImage(vdlCanvas,0,i0,250,nShow,x0,y5,w-26,h5*nShow/110); ctx.imageSmoothingEnabled=true; }
+  ctx.strokeStyle=C_.acc; ctx.strokeRect(x0,y5,w-26,h5);
+  txt(fmt(mp,0),x0-4,y5+8,C_.acc,'9px Segoe UI','right'); txt(fmt(mp+55,0),x0-4,y5+h5,C_.mut,'9px Segoe UI','right');
+  arrow(x0+w-22,y5+h5/2,x0+w+2,y5+h5/2,C_.acc);
+}
+
+/* =====================================================================
+   PANEL 6 – LOG TRACKS
+   ===================================================================== */
+const LT = {x:1110,y:10,w:480,h:820, top:84, bot:822};
+const TR = {dep:[1110,1150], gr:[1150,1222], ccl:[1222,1250], tt:[1250,1330], amp:[1330,1420], vdl:[1420,1590]};
+const yDep = d=> LT.top + (d-CFG.logTop)/(CFG.logBot-CFG.logTop)*(LT.bot-LT.top);
+function drawLogs(){
+  panel(LT.x,LT.y,LT.w,LT.h,'Log: CBL / VDL', fmt(CFG.logTop)+'–'+fmt(CFG.logBot)+' ft');
+  const ttLo=Math.round(G.ttModel-40), ttHi=Math.round(G.ttModel+110);
+  const hdr=(k,lab,lo,hi,col)=>{ const [a,b]=TR[k]; txt(lab,(a+b)/2,LT.y+38,col,'600 10px Segoe UI','center');
+    if(lo!==undefined){ txt(lo,a+2,LT.y+52,col,'9px Segoe UI'); txt(hi,b-2,LT.y+52,col,'9px Segoe UI','right'); ctx.fillStyle=col; ctx.fillRect(a+2,LT.y+56,b-a-4,1.5);} };
+  hdr('dep','Depth',undefined,undefined,'#ccc'); hdr('gr','GR API',0,150,'#7ee27e'); hdr('ccl','CCL',undefined,undefined,'#ddd');
+  hdr('tt','TT µs',ttLo,ttHi,'#ff8a65'); hdr('amp','Amp mV',0,100,'#5ab4ff'); hdr('vdl','VDL µs',VDL_T0,VDL_T1,'#ddd');
+  txt('Amp ×10',(TR.amp[0]+TR.amp[1])/2,LT.y+70,'#5ab4ff','9px Segoe UI','center'); ctx.strokeStyle='#5ab4ff'; ctx.setLineDash([3,2]); ctx.beginPath(); ctx.moveTo(TR.amp[0]+2,LT.y+74); ctx.lineTo(TR.amp[1]-2,LT.y+74); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='#0f1922'; ctx.fillRect(TR.dep[0],LT.top,TR.vdl[1]-TR.dep[0],LT.bot-LT.top);
+  ctx.strokeStyle='#2a3b4c'; for(const k in TR) ctx.strokeRect(TR[k][0],LT.top,TR[k][1]-TR[k][0],LT.bot-LT.top);
+  const span=CFG.logBot-CFG.logTop, major=span<=500?50:span<=1200?100:250, minor=major/5;
+  for(let d=Math.ceil(CFG.logTop/minor)*minor; d<=CFG.logBot; d+=minor){ const y=yDep(d); const isM=Math.abs(d%major)<1e-6;
+    ctx.strokeStyle=isM?'#2c3e50':'#1a2733'; ctx.beginPath(); ctx.moveTo(TR.gr[0],y); ctx.lineTo(TR.amp[1],y); ctx.stroke();
+    if(isM) txt(d+'',(TR.dep[0]+TR.dep[1])/2,y+4,'#c9d5df','10px Segoe UI','center'); }
+  ctx.imageSmoothingEnabled=true; ctx.drawImage(vdlCanvas,0,0,250,NROWS,TR.vdl[0]+1,yDep(CFG.logTop),TR.vdl[1]-TR.vdl[0]-2,yDep(CFG.logBot)-yDep(CFG.logTop)+1);
+  const curve=(arr,k,lo,hi,col,dash,w,skip)=>{ const [a,b]=TR[k]; ctx.strokeStyle=col; ctx.lineWidth=w||1.2; ctx.setLineDash(dash||[]); ctx.beginPath(); let pen=false;
+    for(let i=0;i<NROWS;i++){ const v=arr[i]; if(isNaN(v)||(skip&&v>hi)){pen=false;continue;} const x=a+2+Math.max(0,Math.min(1,(v-lo)/(hi-lo)))*(b-a-4), y=yDep(CFG.logTop+i*ROW); pen?ctx.lineTo(x,y):ctx.moveTo(x,y); pen=true; }
+    ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth=1; };
+  curve(LOGS.gr,'gr',0,150,'#7ee27e'); curve(LOGS.ccl,'ccl',-3,3,'#ddd'); curve(LOGS.tt,'tt',ttLo,ttHi,'#ff8a65');
+  curve(LOGS.amp.map(v=>v*10),'amp',0,100,'#5ab4ff',[3,2],1,true); curve(LOGS.amp,'amp',0,100,'#5ab4ff',null,1.6);
+  for(const c of COLLARS){ if(c>=CFG.logTop&&c<=CFG.logBot){ ctx.fillStyle='#8a9aa8'; ctx.fillRect(TR.dep[1]-8,yDep(c)-0.5,8,1.5); } }
+  for(const t of TAGS){ const i=Math.round((t[0]-CFG.logTop)/ROW); if(i<0||i>=NROWS||!LOGS.done[i]) continue;
+    const y=yDep(t[0]); ctx.font='600 9px Segoe UI'; const tw=ctx.measureText(t[1]).width; ctx.fillStyle='rgba(13,20,27,.8)'; ctx.fillRect(TR.vdl[1]-tw-8,y-7,tw+6,12); txt(t[1],TR.vdl[1]-5,y+2,C_.acc,'600 9px Segoe UI','right'); }
+  const mp=S.tx-2.5;
+  if(mp>=CFG.logTop-3 && mp<=CFG.logBot+3){ const y=yDep(mp); ctx.strokeStyle='#ffd27a'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(TR.dep[0],y); ctx.lineTo(TR.vdl[1],y); ctx.stroke(); ctx.lineWidth=1;
+    ctx.fillStyle='#ffd27a'; ctx.beginPath(); ctx.moveTo(TR.dep[0],y-5); ctx.lineTo(TR.dep[0]+7,y); ctx.lineTo(TR.dep[0],y+5); ctx.fill(); }
+  txt(firingNow()?'click a logged depth (paused) to inspect':'',LT.x+LT.w-10,LT.y+19,C_.mut,'9.5px Segoe UI','right');
+}
+
+/* =====================================================================
+   MAIN LOOP
+   ===================================================================== */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  const prevTx=S.tx;
+  if(S.phase==='rih' && !S.paused){
+    S.tx += Math.max(260,CFG.td/11)*dt;
+    if(S.tx>=TX_BOTTOM){ S.tx=TX_BOTTOM; S.phase='atTD'; S.t=0; if(S.auto) setTimeout(()=>{ if(S.phase==='atTD') startLog(); }, 2500); }
+  } else if(S.phase==='logging' && !S.paused && !heldForSlowMo()){
+    S.tx -= S.logSpeed*dt;
+    while(S.tx-2.5 <= S.nextRow && S.nextRow>=CFG.logTop){ recordRow(S.nextRow); S.nextRow-=ROW; }
+    if(S.tx-2.5 < CFG.logTop){ S.phase='done'; S.auto=false; }
+  }
+  S.drum += (S.tx-prevTx)*0.08;
+  const firing=firingNow();
+  const C3=compsAt(S.tx,3), C5=compsAt(S.tx,5);
+  STAGES = stagesFor(C3,C5);
+  if(firing && S.waveOn){
+    const t0=S.t; let t1=S.t + S.rate*dt;
+    if(S.guided){ for(const st of STAGES){ if(st.t>t0+0.01 && st.t<=t1){ t1=st.t; S.waveOn=false; syncPlay(); break; } } }
+    S.t=t1;
+    if(S.t>=W_MAX){ S.t=0; }
+    rT.value=S.t;
+  }
+  vT.textContent=fmt(S.t,0)+' µs';
+  ctx.fillStyle='#0d141b'; ctx.fillRect(0,0,W,H);
+  drawOverview();
+  const stg = firing ? STAGES[curStage()] : null;
+  drawZoom(S.t-DELAY, C3, C5, stg);
+  drawSequence(C5);
+  drawR3(C3);
+  drawBuilder(C5);
+  drawLogs();
+  requestAnimationFrame(frame);
+}
+
+/* =====================================================================
+   CONTROLS
+   ===================================================================== */
+const $=id=>document.getElementById(id);
+const selCsg=$('selCsg'), selOd=$('selOd'), rSpd=$('rSpd'), rT=$('rT'), vT=$('vT'), rRate=$('rRate');
+CASINGS.forEach((c,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=c.name; selCsg.appendChild(o); });
+selCsg.value=3;
+function startRih(){ if(S.phase==='surface'){ S.phase='rih'; S.paused=false; } }
+function startLog(){ if(S.phase==='atTD'){ S.phase='logging'; S.paused=false; S.t=0; } else if(S.phase==='logging'){ S.paused=false; } syncPause(); }
+function reset(){ S.phase='surface'; S.tx=60; S.paused=false; S.auto=false; S.t=0; resetLogs(); syncPause(); }
+function syncPause(){ $('bPause').textContent=S.paused?'▶ Resume':'⏸ Pause'; }
+function syncPlay(){ $('sPlay').textContent=S.waveOn?'⏸ Wave':'▶ Wave'; }
+$('bRih').onclick=startRih;
+$('bLog').onclick=()=>{ if(S.phase==='surface'){ S.tx=TX_BOTTOM; S.phase='atTD'; } startLog(); };
+$('bAuto').onclick=()=>{ reset(); S.auto=true; startRih(); };
+$('bPause').onclick=()=>{ S.paused=!S.paused; syncPause(); };
+$('bReset').onclick=reset;
+rT.oninput=()=>{ S.t=+rT.value; S.waveOn=false; syncPlay(); };
+rSpd.oninput=()=>{ S.logSpeed=+rSpd.value; $('vSpd').textContent=S.logSpeed+' ft/s'; }; rSpd.oninput();
+// playback rate (log scale 2 – 600 µs per second)
+const rateFromV=v=>2*Math.pow(300,v/100), vFromRate=r=>Math.log(r/2)/Math.log(300)*100;
+function setRate(r){ S.rate=r; rRate.value=vFromRate(r); updRate(); }
+function updRate(){ S.rate=rateFromV(+rRate.value);
+  $('vRate').textContent = (S.rate<10?S.rate.toFixed(1):Math.round(S.rate))+' µs/s · '+(W_MAX/S.rate<100?(W_MAX/S.rate).toFixed(0)+' s/shot':(W_MAX/S.rate/60).toFixed(1)+' min/shot');
+  for(const [id,lo,hi] of [['pPath',0,10],['pSlow',10,100],['pLive',100,1e9]]) $(id).classList.toggle('on', S.rate>=lo && S.rate<hi); }
+rRate.oninput=updRate;
+$('pPath').onclick=()=>{ setRate(5); S.waveOn=true; syncPlay(); };
+$('pSlow').onclick=()=>{ setRate(30); S.waveOn=true; syncPlay(); };
+$('pLive').onclick=()=>{ setRate(240); S.waveOn=true; syncPlay(); };
+$('sPlay').onclick=()=>{ S.waveOn=!S.waveOn; if(S.waveOn && S.t>=W_MAX-1) S.t=0; syncPlay(); };
+$('sNext').onclick=()=>{ const nx=STAGES.find(s=>s.t>S.t+0.5); S.t = nx? nx.t : 0; S.waveOn=false; syncPlay(); };
+$('sPrev').onclick=()=>{ const k=curStage(); const tgt = (S.t-STAGES[k].t>2)? STAGES[k].t : STAGES[Math.max(0,k-1)].t; S.t=tgt; S.waveOn=false; syncPlay(); };
+$('cGuide').onchange=e=>{ S.guided=e.target.checked; };
+$('cHold').onchange=e=>{ S.hold=e.target.checked; };
+function fillOd(){
+  const id=CASINGS[+selCsg.value].id; selOd.innerHTML='';
+  TOOLS.forEach((t,i)=>{ const o=document.createElement('option'); o.value=i; const ok = id - t.od >= MIN_CLEAR;
+    o.textContent = t.name + (ok?'':' (too large)'); o.disabled=!ok; if(t.od===TOOL_OD) o.selected=true; selOd.appendChild(o); });
+  if(id - TOOL_OD < MIN_CLEAR){ TOOL_OD = TOOLS[0].od; selOd.value=0; $('pErr').textContent='Tool OD reset to 1-11/16" – previous size does not fit this casing.'; }
+}
+selCsg.onchange=()=>{ $('pErr').textContent=''; fillOd(); setCasing(+selCsg.value); reset(); updInfo(); };
+selOd.onchange=()=>{ TOOL_OD = TOOLS[+selOd.value].od; $('pErr').textContent=''; setCasing(+selCsg.value); reset(); updInfo(); };
+$('selVdl').onchange=e=>{ S.vdlMode=e.target.value; rerenderVDL(); };
+$('selTool').onchange=e=>{ e.target.value='cbl'; };
+cv.addEventListener('click',ev=>{
+  const r=cv.getBoundingClientRect(), sx=(ev.clientX-r.left)/r.width*W, sy=(ev.clientY-r.top)/r.height*H;
+  if(sx<TR.dep[0]||sx>TR.vdl[1]||sy<LT.top||sy>LT.bot) return;
+  const d = CFG.logTop + (sy-LT.top)/(LT.bot-LT.top)*(CFG.logBot-CFG.logTop), i=Math.round((d-CFG.logTop)/ROW);
+  if((S.phase==='done' || (S.phase==='logging'&&S.paused)) && LOGS.done[i]) S.tx = d+2.5;
+});
+// logging program box
+const IN = {iTop:'logTop', iBot:'logBot', iToc:'toc', iFc:'fc', iTd:'td', iSpd:'realSpd'};
+function fillInputs(){ for(const k in IN) $(k).value=CFG[IN[k]]; }
+function updInfo(){
+  const span=CFG.logBot-CFG.logTop, mins=span/CFG.realSpd;
+  $('pInfo').innerHTML =
+    `<b>${fmt(span)} ft</b>, ${fmt(NROWS)} samples @ ${ROW} ft · ≈ <b>${mins<90?fmt(mins,0)+' min':fmt(mins/60,1)+' hr'}</b> @ ${fmt(CFG.realSpd)} ft/min · `+
+    `CBL depth = Tx−1.5 ft, VDL depth = Tx−2.5 ft · ${G.name}, tool ${TOOLS.find(t=>t.od===TOOL_OD).name}: model FP TT <b>${fmt(G.ttModel,0)} µs</b> (deck ${G.tt}), FP <b>${G.fp} mV</b> · `+
+    `gate ${fmt(G.gateOpen)}–${fmt(G.gateOpen+GATE_W)} µs, thr ${THR} mV`;
+}
+$('bApply').onclick=()=>{
+  const v={}; for(const k in IN) v[IN[k]]=parseFloat($(k).value);
+  let e='';
+  if(Object.values(v).some(x=>!isFinite(x))) e='All fields need a number.';
+  else if(v.td<=v.fc) e='Float collar must be above TD.';
+  else if(v.logBot>v.fc-3) e='Log bottom must be ≥ 3 ft above float collar (Tx sits 2.5 ft below VDL depth).';
+  else if(v.logTop>=v.logBot-50) e='Log interval must be at least 50 ft.';
+  else if(v.logTop<CFG.surfShoe) e='Log top must be below surface casing shoe ('+CFG.surfShoe+' ft) in this model.';
+  else if(v.logBot-v.logTop>4000) e='Keep interval ≤ 4,000 ft.';
+  else if(v.toc<0||v.toc>v.fc) e='TOC must be between surface and float collar.';
+  else if(v.realSpd<=0) e='Real speed must be > 0.';
+  $('pErr').textContent=e; if(e) return;
+  Object.assign(CFG,v); rebuildModel(); reset(); updInfo();
+};
+
+fillOd(); setCasing(3); rebuildModel(); resetLogs(); fillInputs(); updInfo(); setRate(120); syncPlay();
+requestAnimationFrame(frame);
+}
+</script>
+</body>
+</html>
